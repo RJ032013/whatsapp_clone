@@ -1,0 +1,20 @@
+{
+    "name": "ai-face-attendance",
+    "version": "1.0.0",
+    "description": "Standalone AI Face Recognition Attendance System",
+    "main": "app.js",
+    "scripts": {
+        "start": "node app.js",
+        "dev": "nodemon app.js"
+    },
+    "dependencies": {
+        "express": "^4.19.2",
+        "mongoose": "^8.4.1",
+        "ejs": "^3.1.10",
+        "dotenv": "^16.4.5",
+        "body-parser": "^1.20.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

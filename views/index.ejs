@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Attendance - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus+Jakarta+Sans', sans-serif;
+            background: #0f172a;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .dashboard-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 900px;
+            margin: auto;
+            padding: 40px;
+        }
+
+        .stat-banner {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .btn-premium {
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-weight: 700;
+            transition: all 0.3s;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-register {
+            background: #10b981;
+            color: white;
+            border: none;
+        }
+
+        .btn-scan {
+            background: #3b82f6;
+            color: white;
+            border: none;
+        }
+
+        .btn-premium:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            opacity: 0.9;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container text-center">
+        <div class="dashboard-card">
+            <h1 class="fw-bold mb-4">AI ATTENDANCE <span class="text-primary">PRO</span></h1>
+            <p class="text-muted mb-5">Standalone Face Recognition & Automatic Tracking System</p>
+
+            <div class="stat-banner">
+                <div>
+                    <h2 class="mb-0 fw-bold">
+                        <%= stats.students %>
+                    </h2>
+                    <small class="opacity-75">STREAMS</small>
+                </div>
+                <div class="border-start border-white border-opacity-25 mx-4"></div>
+                <div>
+                    <h2 class="mb-0 fw-bold">
+                        <%= stats.registered %>
+                    </h2>
+                    <small class="opacity-75">REGISTERED FACES</small>
+                </div>
+            </div>
+
+            <div class="row g-4 mt-2">
+                <div class="col-md-6">
+                    <a href="/register" class="btn btn-premium btn-register">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" class="me-2 mb-1">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <line x1="20" y1="8" x2="20" y2="14"></line>
+                            <line x1="17" y1="11" x2="23" y2="11"></line>
+                        </svg>
+                        Registration Panel
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <a href="/scan" class="btn btn-premium btn-scan">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" class="me-2 mb-1">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                            </path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                        Open Scanner
+                    </a>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-4 border-top border-white border-opacity-10">
+                <p class="text-muted small mb-0">Powered by Neural Networks (CDN Edition)</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
