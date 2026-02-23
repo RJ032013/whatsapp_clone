@@ -1,7 +1,7 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env'), override: true });
 const express = require('express');
 const mongoose = require('mongoose');
-const path = require('path');
 const bodyParser = require('body-parser');
 
 const app = express();
@@ -13,24 +13,25 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // DB Connection using the "live" database URI from your main app
-// If the variable is not found in .env, it defaults to a local one
-const MONGODB_URI = 'mongodb+srv://ravi:123@cluster0.zemgu0j.mongodb.net/face_attendance';
+// Using the URI from the root .env if available
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ravi:123@cluster0.zemgu0j.mongodb.net/whatsapp_sender';
 
 mongoose.connect(MONGODB_URI)
-    .then(() => console.log('✅ Connected to LIVE MongoDB Database'))
+    .then(() => console.log('✅ Connected to LIVE MongoDB Database (whatsapp_sender)'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-// Models
-const studentSchema = new mongoose.Schema({
+// Models - Mapped to the main app's "contacts" collection
+const contactSchema = new mongoose.Schema({
     name: { type: String, required: true },
+    phone: { type: String }, // Optional in attendance context but present in DB
     category: { type: String, required: true },
     faceDescriptor: { type: [Number], default: [] },
     createdAt: { type: Date, default: Date.now }
-});
-const Student = mongoose.model('Student', studentSchema);
+}, { collection: 'contacts' }); // Explicitly use 'contacts' collection
+const Contact = mongoose.model('Contact', contactSchema);
 
 const attendanceSchema = new mongoose.Schema({
-    studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+    contactId: { type: mongoose.Schema.Types.ObjectId, ref: 'Contact', required: true },
     date: { type: String, required: true }, // YYYY-MM-DD
     status: { type: String, enum: ['Present', 'Absent'], default: 'Absent' },
     timestamp: { type: Date, default: Date.now }
@@ -41,11 +42,12 @@ const Attendance = mongoose.model('Attendance', attendanceSchema);
 app.get('/', async (req, res) => {
     try {
         const stats = {
-            students: await Student.countDocuments(),
-            registered: await Student.countDocuments({ faceDescriptor: { $exists: true, $not: { $size: 0 } } })
+            students: await Contact.countDocuments(),
+            registered: await Contact.countDocuments({ faceDescriptor: { $exists: true, $not: { $size: 0 } } })
         };
         res.render('index', { stats });
     } catch (err) {
+        console.error(err);
         res.status(500).send('Server Error');
     }
 });
@@ -53,9 +55,11 @@ app.get('/', async (req, res) => {
 // Face Registration View
 app.get('/register', async (req, res) => {
     try {
-        const students = await Student.find().sort({ name: 1 });
+        const students = await Contact.find().sort({ name: 1 });
+        console.log(`[DEBUG] Found ${students.length} contacts for register page`);
         res.render('register', { students });
     } catch (err) {
+        console.error('[DEBUG] Error fetching contacts:', err);
         res.status(500).send('Server Error');
     }
 });
@@ -65,11 +69,13 @@ app.get('/scan', (req, res) => {
     res.render('scan');
 });
 
-// API: Register Student
+// API: Register Student (Updates/Creates in contacts collection)
 app.post('/api/students', async (req, res) => {
     try {
         const { name, category } = req.body;
-        await Student.create({ name, category });
+        // Search if contact exists by name and category (simple check)
+        // or just create new if phone is missing
+        await Contact.create({ name, category, phone: 'manual_' + Date.now() });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -80,7 +86,7 @@ app.post('/api/students', async (req, res) => {
 app.post('/api/face/register', async (req, res) => {
     try {
         const { studentId, descriptor } = req.body;
-        await Student.findByIdAndUpdate(studentId, { faceDescriptor: descriptor });
+        await Contact.findByIdAndUpdate(studentId, { faceDescriptor: descriptor });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -90,7 +96,7 @@ app.post('/api/face/register', async (req, res) => {
 // API: Get Registered Students for Scanner
 app.get('/api/face/descriptors', async (req, res) => {
     try {
-        const students = await Student.find({
+        const students = await Contact.find({
             faceDescriptor: { $exists: true, $not: { $size: 0 } }
         }).select('name faceDescriptor');
         res.json({ success: true, data: students });
@@ -106,7 +112,7 @@ app.post('/api/attendance', async (req, res) => {
         const today = new Date().toISOString().split('T')[0];
 
         await Attendance.findOneAndUpdate(
-            { studentId, date: today },
+            { contactId: studentId, date: today },
             { status: 'Present' },
             { upsert: true, new: true }
         );
