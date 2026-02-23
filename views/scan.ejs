@@ -157,7 +157,7 @@
             try {
                 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
@@ -176,6 +176,7 @@
 
                 startWebcam();
             } catch (e) {
+                console.error("AI Init Error:", e);
                 sysStatus.innerHTML = '<span class="text-danger">ERROR INITIALIZING AI</span>';
             }
         }
@@ -194,28 +195,44 @@
             const displaySize = { width: video.clientWidth, height: video.clientHeight };
             faceapi.matchDimensions(overlay, displaySize);
 
-            setInterval(async () => {
-                if (!isReady || !faceMatcher) return;
+            // Sequential detection loop to prevent CPU overhead
+            async function detectionLoop() {
+                if (!isReady || !faceMatcher || video.paused || video.ended) {
+                    requestAnimationFrame(detectionLoop);
+                    return;
+                }
 
-                const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
-                const resized = faceapi.resizeResults(detections, displaySize);
+                try {
+                    // Use TinyFaceDetector for 3x-4x speed boost
+                    const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                        .withFaceLandmarks()
+                        .withFaceDescriptors();
 
-                const ctx = overlay.getContext('2d');
-                ctx.clearRect(0, 0, overlay.width, overlay.height);
+                    const resized = faceapi.resizeResults(detections, displaySize);
+                    const ctx = overlay.getContext('2d');
+                    ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-                const results = resized.map(d => faceMatcher.findBestMatch(d.descriptor));
+                    const results = resized.map(d => faceMatcher.findBestMatch(d.descriptor));
 
-                results.forEach((match, i) => {
-                    const box = resized[i].detection.box;
-                    const drawBox = new faceapi.draw.DrawBox(box, { label: match.toString() });
-                    drawBox.draw(overlay);
+                    results.forEach((match, i) => {
+                        const box = resized[i].detection.box;
+                        const drawBox = new faceapi.draw.DrawBox(box, { label: match.toString() });
+                        drawBox.draw(overlay);
 
-                    if (match.label !== 'unknown') {
-                        const [id, name] = match.label.split('|');
-                        processAttendance(id, name);
-                    }
-                });
-            }, 300);
+                        if (match.label !== 'unknown') {
+                            const [id, name] = match.label.split('|');
+                            processAttendance(id, name);
+                        }
+                    });
+                } catch (err) {
+                    console.error("Detection Error:", err);
+                }
+
+                // Wait 500ms before next detection to save CPU
+                setTimeout(detectionLoop, 500);
+            }
+
+            detectionLoop();
         });
 
         async function processAttendance(id, name) {

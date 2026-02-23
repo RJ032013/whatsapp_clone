@@ -126,14 +126,19 @@
         // 1. Initial Models
         async function loadModels() {
             const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
-            await Promise.all([
-                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-            ]);
-            document.getElementById('loadingAI').style.display = 'none';
-            document.getElementById('cameraArea').style.display = 'block';
-            startWebcam();
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+                document.getElementById('loadingAI').style.display = 'none';
+                document.getElementById('cameraArea').style.display = 'block';
+                startWebcam();
+            } catch (err) {
+                console.error("Model Load Error:", err);
+                document.getElementById('loadingAI').innerHTML = '<span class="text-danger">AI Models Failed to Load</span>';
+            }
         }
 
         function startWebcam() {
@@ -147,21 +152,35 @@
             const displaySize = { width: video.clientWidth, height: video.clientHeight };
             faceapi.matchDimensions(overlay, displaySize);
 
-            setInterval(async () => {
-                const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
-                const ctx = overlay.getContext('2d');
-                ctx.clearRect(0, 0, overlay.width, overlay.height);
-
-                if (detection) {
-                    const resized = faceapi.resizeResults(detection, displaySize);
-                    faceapi.draw.drawDetections(overlay, resized);
-                    currentDescriptor = Array.from(detection.descriptor);
-                    if (studentSelect.value) registerBtn.classList.remove('disabled');
-                } else {
-                    currentDescriptor = null;
-                    registerBtn.classList.add('disabled');
+            async function detectionLoop() {
+                if (video.paused || video.ended) {
+                    requestAnimationFrame(detectionLoop);
+                    return;
                 }
-            }, 300);
+
+                try {
+                    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                    const ctx = overlay.getContext('2d');
+                    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+                    if (detection) {
+                        const resized = faceapi.resizeResults(detection, displaySize);
+                        faceapi.draw.drawDetections(overlay, resized);
+                        currentDescriptor = Array.from(detection.descriptor);
+                        if (studentSelect.value) registerBtn.classList.remove('disabled');
+                    } else {
+                        currentDescriptor = null;
+                        registerBtn.classList.add('disabled');
+                    }
+                } catch (err) {
+                    console.error("Registration Detection Error:", err);
+                }
+
+                // Wait 500ms for next detection
+                setTimeout(detectionLoop, 500);
+            }
+
+            detectionLoop();
         });
 
         // 3. API Actions
